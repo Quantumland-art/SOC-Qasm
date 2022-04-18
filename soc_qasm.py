@@ -1,8 +1,8 @@
-# SOC-Qasm
+# SOC-Qasm SaaS
 # A simple Socket.io Python interface for executing Qasm code.
 # Or a simple bridge to connect _The QAC Toolkit_ with real quantum hardware.
 #
-# Omar Costa Hamido [v1.0] (2022)
+# Omar Costa Hamido [v2.0] (2022)
 # https://github.com/iccmr-quantum/SOC-Qasm
 #
 
@@ -102,16 +102,16 @@ def parse_qasm(*args):
 
     print("args: ",args)
     print("args size: ", len(args))
-    qc=QuantumCircuit().from_qasm_str(args[0])
+    qc=QuantumCircuit().from_qasm_str(args[1])
 
-    if len(args)>1:
-        shots = args[1]
+    if len(args)>2:
+        shots = args[2]
         pass
     else:
         shots=1024
 
-    if len(args)>2:
-        backend_name = args[2]
+    if len(args)>3:
+        backend_name = args[3]
     else:
         backend_name='qasm_simulator'
 
@@ -127,7 +127,7 @@ def parse_qasm(*args):
     counts_list = " ".join(counts_list) # and then into a string
     sio.emit('response', ['counts', counts_list], room=SID)
 
-def main(PORT, TOKEN, HUB, GROUP, PROJECT):
+def main(PORT, TOKEN, HUB, GROUP, PROJECT, PASSWORD):
 
     global provider, ERR_SEP
     ERR_SEP = '----------------------------------------' # For FileLikeErrorSOC() class
@@ -147,13 +147,16 @@ def main(PORT, TOKEN, HUB, GROUP, PROJECT):
     def QuTune(sid, *data):
         global SID
         SID = sid
-        parse_qasm(*data)
+        if data[0]==PASSWORD:
+            parse_qasm(*data)
+        else:
+            sio.emit('response', ['error', "Password invalid"], room=SID)
 
     @sio.event
     def disconnect(sid):
         print('disconnected from: ', sid)
 
-    eventlet.wsgi.server(eventlet.listen(('', PORT)), app)
+    eventlet.wsgi.server(eventlet.listen(("0.0.0.0", PORT)), app)
 
 if __name__ == '__main__':
 
@@ -164,6 +167,7 @@ if __name__ == '__main__':
     p.add_argument('--hub', help='If you want to run circuits on real quantum hardware, you need to provide your IBMQ Hub')
     p.add_argument('--group', help='If you want to run circuits on real quantum hardware, you need to provide your IBMQ Group')
     p.add_argument('--project', help='If you want to run circuits on real quantum hardware, you need to provide your IBMQ Project')
+    p.add_argument('--password', help='This is to ensure that only allowed individuals are accessing this service')
 
     args = p.parse_args()
 
@@ -181,7 +185,7 @@ if __name__ == '__main__':
                 args.project=None
 
     print('================================================')
-    print(' SOC_QASM by OCH @ QuTune (v1.0) ')
+    print(' SOC_QASM by OCH @ QuTune (v2.0) ')
     print(' https://iccmr-quantum.github.io               ')
     print('================================================')
-    main(args.port, args.token, args.hub, args.group, args.project)
+    main(args.port, args.token, args.hub, args.group, args.project, args.password)
